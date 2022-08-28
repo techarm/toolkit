@@ -95,12 +95,18 @@ type Logger interface {
 	// SetHandler updates the logger to write records to the specified handler.
 	SetHandler(h Handler)
 
-	// Log a message at the given level with context key/value pairs
+	// Trace Log a message at the given level with context key/value pairs
 	Trace(msg string, ctx ...interface{})
 	Debug(msg string, ctx ...interface{})
 	Info(msg string, ctx ...interface{})
 	Warn(msg string, ctx ...interface{})
 	Error(msg string, ctx ...interface{})
+
+	Tracef(format string, a ...any)
+	Debugf(format string, a ...any)
+	Infof(format string, a ...any)
+	Warnf(format string, a ...any)
+	Errorf(format string, a ...any)
 }
 
 type logger struct {
@@ -155,6 +161,26 @@ func (l *logger) Warn(msg string, ctx ...interface{}) {
 
 func (l *logger) Error(msg string, ctx ...interface{}) {
 	l.write(msg, LevelError, ctx)
+}
+
+func (l *logger) Tracef(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args), LevelTrace, nil)
+}
+
+func (l *logger) Debugf(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args), LevelDebug, nil)
+}
+
+func (l *logger) Infof(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args), LevelInfo, nil)
+}
+
+func (l *logger) Warnf(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args), LevelWarning, nil)
+}
+
+func (l *logger) Errorf(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args), LevelError, nil)
 }
 
 func (l *logger) GetHandler() Handler {

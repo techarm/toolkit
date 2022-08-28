@@ -12,11 +12,10 @@ import (
 )
 
 const (
-	timeFormat = "2006-01-02T15:04:05-0700"
-	//termTimeFormat = "01-02|15:04:05"
+	timeFormat     = "2006-01-02T15:04:05-0700"
 	termTimeFormat = "2006-01-02 15:04:05.000"
-	floatFormat    = 'f'
 	termMsgJust    = 40
+	floatFormat    = 'f'
 )
 
 // Format  is the interface implemented by StreamHandler formatters.
@@ -51,6 +50,14 @@ type TerminalFormatter struct {
 	TimestampFormat string
 	TermMessageJust int
 	CallerLevel     CallerType
+}
+
+func TerminalFormatterDefault() TerminalFormatter {
+	return TerminalFormatter{
+		TimestampFormat: termTimeFormat,
+		TermMessageJust: termMsgJust,
+		CallerLevel:     CallerTypeNone,
+	}
 }
 
 // Format formats log records optimized for human readability on
@@ -112,18 +119,18 @@ func (t TerminalFormatter) Format(r *Record) []byte {
 		sb.WriteString("\x1b[0m ")
 
 		if t.CallerLevel == CallerTypeNone {
-			fmt.Fprintf(b, sb.String(), color, r.Time.Format(termTimeFormat), lvl, r.Message)
+			_, _ = fmt.Fprintf(b, sb.String(), color, r.Time.Format(t.TimestampFormat), lvl, r.Message)
 		} else {
-			fmt.Fprintf(b, sb.String(), color, r.Time.Format(termTimeFormat), lvl, r.Call, r.Message)
+			_, _ = fmt.Fprintf(b, sb.String(), color, r.Time.Format(t.TimestampFormat), lvl, r.Call, r.Message)
 		}
 
 	} else {
-		fmt.Fprintf(b, "[%s] [%s] %s ", lvl, r.Time.Format(termTimeFormat), r.Message)
+		_, _ = fmt.Fprintf(b, "[%s] [%s] %s ", lvl, r.Time.Format(t.TimestampFormat), r.Message)
 	}
 
 	// try to justify the log output for short messages
-	if len(r.Context) > 0 && len(r.Message) < termMsgJust {
-		b.Write(bytes.Repeat([]byte{' '}, termMsgJust-len(r.Message)))
+	if len(r.Context) > 0 && len(r.Message) < t.TermMessageJust {
+		b.Write(bytes.Repeat([]byte{' '}, t.TermMessageJust-len(r.Message)))
 	}
 
 	// print the keys logfmt style

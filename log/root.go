@@ -15,11 +15,7 @@ var (
 
 func init() {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		StdoutHandler = StreamHandler(os.Stdout, TerminalFormatter{
-			TimestampFormat: "2006-01-02 15:04:05.000",
-			TermMessageJust: 35,
-			CallerLevel:     CallerTypeNone,
-		})
+		StdoutHandler = StreamHandler(os.Stdout, TerminalFormatterDefault())
 	}
 
 	root = &logger{[]interface{}{}, new(swapHandler)}
@@ -46,10 +42,6 @@ func Trace(msg string, ctx ...interface{}) {
 	root.write(msg, LevelTrace, ctx)
 }
 
-func TraceError(err error) {
-	root.write(fmt.Sprintf("💣 %v", err), LevelTrace, nil)
-}
-
 // Debug is a convenient alias for Root().Debug
 func Debug(msg string, ctx ...interface{}) {
 	root.write(msg, LevelDebug, ctx)
@@ -68,4 +60,39 @@ func Warn(msg string, ctx ...interface{}) {
 // Error is a convenient alias for Root().Error
 func Error(msg string, ctx ...interface{}) {
 	root.write(msg, LevelError, ctx)
+}
+
+// Tracef formats according to a format specifier and returns the resulting string.
+func Tracef(format string, args ...any) {
+	root.write(fmt.Sprintf(format, args...), LevelTrace, nil)
+}
+
+// Debugf is a convenient alias for Root().Debugf
+func Debugf(format string, args ...any) {
+	root.write(fmt.Sprintf(format, args...), LevelDebug, nil)
+}
+
+// Infof is a convenient alias for Root().Infof
+func Infof(format string, args ...any) {
+	root.write(fmt.Sprintf(format, args...), LevelInfo, nil)
+}
+
+// Warnf is a convenient alias for Root().Warnf
+func Warnf(format string, args ...any) {
+	root.write(fmt.Sprintf(format, args...), LevelWarning, nil)
+}
+
+// Errorf is a convenient alias for Root().Errorf
+func Errorf(format string, args ...any) {
+	root.write(fmt.Sprintf(format, args...), LevelError, nil)
+}
+
+// Errors is a convenient alias for Root().Errorf
+func Errors(err error) {
+	root.write(err.Error(), LevelError, nil)
+}
+
+// Errorv is a convenient alias for Root().Errorf
+func Errorv(err error) {
+	root.write(fmt.Sprintf("%v", err), LevelError, nil)
 }
