@@ -1,4 +1,4 @@
-module github.com/techarm/toolkit/toolkit
+module github.com/techarm/toolkit
 
 go 1.18
 
