@@ -4,7 +4,7 @@ go 1.18
 
 retract (
 	// Published v1 too early
-	[v1.0.0, v2.0.1]
+	[v1.0.0, v2.0.2]
 )
 
 require (
