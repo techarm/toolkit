@@ -1,10 +1,10 @@
-module github.com/techarm/toolkit
+module github.com/techarm/toolkit/v2
 
 go 1.18
 
 retract (
-	// Published v1 too early
-	[v1.0.0, v2.0.2]
+	// Published v2 too early
+	[v0.0.1, v2.0.2]
 )
 
 require (
