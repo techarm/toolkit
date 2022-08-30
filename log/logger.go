@@ -2,19 +2,24 @@ package log
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
+	"github.com/elliotchance/orderedmap"
 	"github.com/go-stack/stack"
 )
 
 const timeKey = "t"
 const lvlKey = "lvl"
 const msgKey = "msg"
-const errorKey = "LOG15_ERROR"
+const errorKey = "LOG_ERROR"
 
 // LEVEL is a type for predefined log levels.
 type LEVEL int
+
+type Fields map[string]any
 
 // List of predefined log Levels
 const (
@@ -23,6 +28,7 @@ const (
 	LevelInfo
 	LevelWarning
 	LevelError
+	LevelFatal
 )
 
 // Returns the name of a LEVEL
@@ -38,6 +44,8 @@ func (l LEVEL) String() string {
 		return "warn"
 	case LevelError:
 		return "error"
+	case LevelFatal:
+		return "fatal"
 	default:
 		panic("bad level")
 	}
@@ -57,6 +65,8 @@ func LevelFromString(levelString string) (LEVEL, error) {
 		return LevelWarning, nil
 	case "error":
 		return LevelError, nil
+	case "fatal":
+		return LevelFatal, nil
 	default:
 		// try to catch e.g. "INFO", "WARN" without slowing down the fast path
 		lower := strings.ToLower(levelString)
@@ -95,29 +105,70 @@ type Logger interface {
 	// SetHandler updates the logger to write records to the specified handler.
 	SetHandler(h Handler)
 
-	// Trace Log a message at the given level with context key/value pairs
-	Trace(msg string, ctx ...interface{})
-	Debug(msg string, ctx ...interface{})
-	Info(msg string, ctx ...interface{})
-	Warn(msg string, ctx ...interface{})
-	Error(msg string, ctx ...interface{})
+	// Trace log a message at the trace level
+	Trace(v ...any)
 
-	Tracef(format string, a ...any)
-	Debugf(format string, a ...any)
-	Infof(format string, a ...any)
-	Warnf(format string, a ...any)
-	Errorf(format string, a ...any)
+	// Debug log a message at the debug level
+	Debug(v ...any)
+
+	// Info log a message at the infomation level
+	Info(v ...any)
+
+	// Warn log a message at the warning level
+	Warn(v ...any)
+
+	// Error log a message at the error level
+	Error(v ...any)
+
+	// Fatal log a message at the fatal level
+	Fatal(v ...any)
+
+	// Tracef log a message at the trace level and arguments are handled in the manner of fmt.Printf.
+	Tracef(format string, v ...any)
+
+	// Debugf log a message at the debug level and arguments are handled in the manner of fmt.Printf.
+	Debugf(format string, v ...any)
+
+	// Infof log a message at the infomation level and arguments are handled in the manner of fmt.Printf.
+	Infof(format string, v ...any)
+
+	// Warnf log a message at the warning level and arguments are handled in the manner of fmt.Printf.
+	Warnf(format string, v ...any)
+
+	// Errorf log a message at the error level and arguments are handled in the manner of fmt.Printf.
+	Errorf(format string, v ...any)
+
+	// Fatalf log a message at the fatal level and arguments are handled in the manner of fmt.Printf.
+	Fatalf(format string, v ...any)
+
+	// Log a message at the given level with context key/value pairs
+	WithField(key string, value any) Logger
+
+	// Log a message at the given level with context key/value pairs
+	WithFields(fileds Fields) Logger
 }
 
 type logger struct {
 	ctx     []interface{}
 	handler *swapHandler
+	// fields    Fields
+	// fieldPool sync.Pool
+	fields atomic.Value
 }
 
-func (l *logger) write(msg string, lvl LEVEL, ctx []interface{}) {
+func (l *logger) write(level LEVEL, msg string) {
+	fields := l.newFields()
+
+	ctx := make([]any, 0, fields.Len())
+	for _, key := range fields.Keys() {
+		value, _ := fields.Get(key)
+		ctx = append(ctx, key, value)
+	}
+	defer l.releaseFields()
+
 	l.handler.Log(&Record{
 		Time:    time.Now(),
-		Level:   lvl,
+		Level:   level,
 		Message: msg,
 		Context: newContext(l.ctx, ctx),
 		Call:    stack.Caller(2),
@@ -130,7 +181,12 @@ func (l *logger) write(msg string, lvl LEVEL, ctx []interface{}) {
 }
 
 func (l *logger) New(ctx ...interface{}) Logger {
-	child := &logger{newContext(l.ctx, ctx), new(swapHandler)}
+	child := &logger{
+		ctx:     newContext(l.ctx, ctx),
+		handler: new(swapHandler),
+		// fields:  make(map[string]any),
+	}
+
 	child.SetHandler(l.handler)
 	return child
 }
@@ -143,44 +199,70 @@ func newContext(prefix []interface{}, suffix []interface{}) []interface{} {
 	return newCtx
 }
 
-func (l *logger) Trace(msg string, ctx ...interface{}) {
-	l.write(msg, LevelTrace, ctx)
+func (l *logger) Trace(v ...any) {
+	l.write(LevelTrace, fmt.Sprint(v...))
 }
 
-func (l *logger) Debug(msg string, ctx ...interface{}) {
-	l.write(msg, LevelDebug, ctx)
+func (l *logger) Debug(v ...any) {
+	l.write(LevelDebug, fmt.Sprint(v...))
 }
 
-func (l *logger) Info(msg string, ctx ...interface{}) {
-	l.write(msg, LevelInfo, ctx)
+func (l *logger) Info(v ...any) {
+	l.write(LevelInfo, fmt.Sprint(v...))
 }
 
-func (l *logger) Warn(msg string, ctx ...interface{}) {
-	l.write(msg, LevelWarning, ctx)
+func (l *logger) Warn(v ...any) {
+	l.write(LevelWarning, fmt.Sprint(v...))
 }
 
-func (l *logger) Error(msg string, ctx ...interface{}) {
-	l.write(msg, LevelError, ctx)
+func (l *logger) Error(v ...any) {
+	l.write(LevelError, fmt.Sprint(v...))
+}
+
+func (l *logger) Fatal(v ...any) {
+	l.write(LevelFatal, fmt.Sprint(v...))
+	os.Exit(1)
 }
 
 func (l *logger) Tracef(format string, args ...any) {
-	l.write(fmt.Sprintf(format, args), LevelTrace, nil)
+	l.write(LevelTrace, fmt.Sprintf(format, args...))
 }
 
 func (l *logger) Debugf(format string, args ...any) {
-	l.write(fmt.Sprintf(format, args), LevelDebug, nil)
+	l.write(LevelDebug, fmt.Sprintf(format, args...))
 }
 
 func (l *logger) Infof(format string, args ...any) {
-	l.write(fmt.Sprintf(format, args), LevelInfo, nil)
+	l.write(LevelInfo, fmt.Sprintf(format, args...))
 }
 
 func (l *logger) Warnf(format string, args ...any) {
-	l.write(fmt.Sprintf(format, args), LevelWarning, nil)
+	l.write(LevelWarning, fmt.Sprintf(format, args...))
 }
 
 func (l *logger) Errorf(format string, args ...any) {
-	l.write(fmt.Sprintf(format, args), LevelError, nil)
+	l.write(LevelError, fmt.Sprintf(format, args...))
+}
+
+func (l *logger) Fatalf(format string, args ...any) {
+	l.write(LevelFatal, fmt.Sprintf(format, args...))
+	os.Exit(1)
+}
+
+func (l *logger) WithField(key string, value any) Logger {
+	fields := l.newFields()
+	fields.Set(key, value)
+	l.fields.Store(fields)
+	return l
+}
+
+func (l *logger) WithFields(fields Fields) Logger {
+	newFields := l.newFields()
+	for key, value := range fields {
+		newFields.Set(key, value)
+	}
+	l.fields.Store(newFields)
+	return l
 }
 
 func (l *logger) GetHandler() Handler {
@@ -198,17 +280,23 @@ func normalize(ctx []interface{}) []interface{} {
 			ctx = ctxMap.toArray()
 		}
 	}
-
-	// ctx needs to be even because it's a series of key/value pairs
-	// no one wants to check for errors on logging functions,
-	// so instead of erroring on bad input, we'll just make sure
-	// that things are the right length and users can fix bugs
-	// when they see the output looks wrong
-	if len(ctx)%2 != 0 {
-		ctx = append(ctx, nil, errorKey, "Normalized odd number of arguments by adding nil")
-	}
-
 	return ctx
+}
+
+func (l *logger) releaseFields() {
+	fields := l.fields.Load()
+	if fields != nil {
+		fields = orderedmap.NewOrderedMap()
+		l.fields.Store(fields)
+	}
+}
+
+func (l *logger) newFields() *orderedmap.OrderedMap {
+	fields := l.fields.Load()
+	if fields != nil {
+		return fields.(*orderedmap.OrderedMap)
+	}
+	return orderedmap.NewOrderedMap()
 }
 
 // Lazy allows you to defer calculation of a logged value that is expensive

@@ -12,4 +12,8 @@ require (
 	github.com/mattn/go-isatty v0.0.16
 )
 
-require golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+require (
+	github.com/elliotchance/orderedmap v1.4.0 // indirect
+	golang.org/x/exp v0.0.0-20220321173239-a90fa8a75705 // indirect
+	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+)

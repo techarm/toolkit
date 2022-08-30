@@ -18,7 +18,11 @@ func init() {
 		StdoutHandler = StreamHandler(os.Stdout, TerminalFormatterDefault())
 	}
 
-	root = &logger{[]interface{}{}, new(swapHandler)}
+	root = &logger{
+		ctx:     []interface{}{},
+		handler: new(swapHandler),
+		// fields:  make(map[string]any),
+	}
 	root.SetHandler(StdoutHandler)
 }
 
@@ -38,61 +42,74 @@ func Root() Logger {
 // runtime.Caller(2) always refers to the call site in client code.
 
 // Trace is a convenient alias for Root().Trace
-func Trace(msg string, ctx ...interface{}) {
-	root.write(msg, LevelTrace, ctx)
+func Trace(v ...any) {
+	root.write(LevelTrace, fmt.Sprint(v...))
 }
 
 // Debug is a convenient alias for Root().Debug
-func Debug(msg string, ctx ...interface{}) {
-	root.write(msg, LevelDebug, ctx)
+func Debug(v ...any) {
+	root.write(LevelDebug, fmt.Sprint(v...))
 }
 
 // Info is a convenient alias for Root().Info
-func Info(msg string, ctx ...interface{}) {
-	root.write(msg, LevelInfo, ctx)
+func Info(v ...any) {
+	root.write(LevelInfo, fmt.Sprint(v...))
 }
 
 // Warn is a convenient alias for Root().Warn
-func Warn(msg string, ctx ...interface{}) {
-	root.write(msg, LevelWarning, ctx)
+func Warn(v ...any) {
+	root.write(LevelWarning, fmt.Sprint(v...))
 }
 
 // Error is a convenient alias for Root().Error
-func Error(msg string, ctx ...interface{}) {
-	root.write(msg, LevelError, ctx)
+func Error(v ...any) {
+	root.write(LevelError, fmt.Sprint(v...))
 }
 
-// Tracef formats according to a format specifier and returns the resulting string.
-func Tracef(format string, args ...any) {
-	root.write(fmt.Sprintf(format, args...), LevelTrace, nil)
+// Fatal is a convenient alias for Root().Fatal
+func Fatal(v ...any) {
+	root.write(LevelFatal, fmt.Sprint(v...))
+	os.Exit(1)
+}
+
+// Tracef is a convenient alias for Root().Debugf
+func Tracef(format string, v ...any) {
+	root.write(LevelTrace, fmt.Sprintf(format, v...))
 }
 
 // Debugf is a convenient alias for Root().Debugf
-func Debugf(format string, args ...any) {
-	root.write(fmt.Sprintf(format, args...), LevelDebug, nil)
+func Debugf(format string, v ...any) {
+	root.write(LevelDebug, fmt.Sprintf(format, v...))
 }
 
 // Infof is a convenient alias for Root().Infof
-func Infof(format string, args ...any) {
-	root.write(fmt.Sprintf(format, args...), LevelInfo, nil)
+func Infof(format string, v ...any) {
+	root.write(LevelInfo, fmt.Sprintf(format, v...))
 }
 
 // Warnf is a convenient alias for Root().Warnf
-func Warnf(format string, args ...any) {
-	root.write(fmt.Sprintf(format, args...), LevelWarning, nil)
+func Warnf(format string, v ...any) {
+	root.write(LevelWarning, fmt.Sprintf(format, v...))
+
 }
 
 // Errorf is a convenient alias for Root().Errorf
-func Errorf(format string, args ...any) {
-	root.write(fmt.Sprintf(format, args...), LevelError, nil)
+func Errorf(format string, v ...any) {
+	root.write(LevelError, fmt.Sprintf(format, v...))
 }
 
-// Errors is a convenient alias for Root().Errorf
-func Errors(err error) {
-	root.write(err.Error(), LevelError, nil)
+// Fatalf is a convenient alias for Root().Fatalf
+func Fatalf(format string, v ...any) {
+	root.write(LevelFatal, fmt.Sprintf(format, v...))
+	os.Exit(1)
 }
 
-// Errorv is a convenient alias for Root().Errorf
-func Errorv(err error) {
-	root.write(fmt.Sprintf("%v", err), LevelError, nil)
+// WithField is a convenient alias for Root().WithField
+func WithField(k string, v any) Logger {
+	return root.WithField(k, v)
+}
+
+// WithFields is a convenient alias for Root().WithFields
+func WithFields(fields Fields) Logger {
+	return root.WithFields(fields)
 }
