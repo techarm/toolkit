@@ -73,8 +73,8 @@ func TerminalFormatterDefault() TerminalFormatter {
 func (t TerminalFormatter) Format(r *Record) []byte {
 	var color = 0
 	switch r.Level {
-	case LevelTrace:
-		color = 90
+	case LevelFatal:
+		color = 41
 	case LevelError:
 		color = 31
 	case LevelWarning:
@@ -82,7 +82,9 @@ func (t TerminalFormatter) Format(r *Record) []byte {
 	case LevelInfo:
 		color = 32
 	case LevelDebug:
-		color = 39
+		color = 37
+	case LevelTrace:
+		color = 90
 	}
 
 	b := &bytes.Buffer{}
