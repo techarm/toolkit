@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elliotchance/orderedmap"
+	"github.com/elliotchance/orderedmap/v2"
 	"github.com/go-stack/stack"
 )
 
@@ -286,17 +286,17 @@ func normalize(ctx []interface{}) []interface{} {
 func (l *logger) releaseFields() {
 	fields := l.fields.Load()
 	if fields != nil {
-		fields = orderedmap.NewOrderedMap()
+		fields = orderedmap.NewOrderedMap[string, any]()
 		l.fields.Store(fields)
 	}
 }
 
-func (l *logger) newFields() *orderedmap.OrderedMap {
+func (l *logger) newFields() *orderedmap.OrderedMap[string, any] {
 	fields := l.fields.Load()
 	if fields != nil {
-		return fields.(*orderedmap.OrderedMap)
+		return fields.(*orderedmap.OrderedMap[string, any])
 	}
-	return orderedmap.NewOrderedMap()
+	return orderedmap.NewOrderedMap[string, any]()
 }
 
 // Lazy allows you to defer calculation of a logged value that is expensive
